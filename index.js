@@ -1,9 +1,9 @@
 // const fs = require('fs');
 // const path = require('path');
 const express = require("express");
-const mongoose = require("mongoose");
 const multer = require("multer");
-const fetch = require("node-fetch"); // важно: версия 2.x
+const fetch = require("node-fetch");
+const { MongoClient } = require('mongodb');
 const { PNG } = require("pngjs");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
@@ -262,40 +262,41 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
-const userSchema = new mongoose.Schema(
-  {
-    login: String,
-    password: String,
-  },
-  { collection: "users" }
-);
-
 app.use(express.urlencoded({ extended: true }));
 
-app.post("/insert/", async (req, res) => {
-  const { login, password, URL } = req.body;
-
-  if (!login || !password || !URL) {
-    res.status(400).send("login, password и URL обязательны");
-    return;
-  }
+app.post('/insert/', async (req, res) => {
+  let client;
 
   try {
-    const conn = await mongoose.createConnection(URL, {
+    const { login, password, URL } = req.body;
+
+    client = new MongoClient(URL, {
       useNewUrlParser: true,
-      useUnifiedTopology: true,
+      useUnifiedTopology: true
     });
 
-    const User = conn.model("User", userSchema);
+    await client.connect();
 
-    await User.create({ login, password });
+    const dbName = URL.split('/').pop().split('?')[0];
+    const db = client.db(dbName);
 
-    await conn.close();
+    const usersCollection = db.collection('users');
 
-    res.status(200).send("ok");
+    const userDocument = {
+      login: login,
+      password: password,
+      createdAt: new Date()
+    };
+
+    await usersCollection.insertOne(userDocument);
+
+    res.sendStatus(200);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("db error");
+    res.sendStatus(500);
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 });
 
