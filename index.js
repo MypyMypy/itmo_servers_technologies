@@ -7,6 +7,7 @@ const { MongoClient } = require('mongodb');
 const { PNG } = require("pngjs");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
+const pug = require('pug');
 const https = require("https"); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
 // const selfsigned = require('selfsigned');
 
@@ -300,46 +301,32 @@ app.post('/insert/', async (req, res) => {
   }
 });
 
-app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
+app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
   res.json({
     id: 1,
     slug: uuid,
     title: {
-      rendered: uuid,
+      rendered: uuid
     },
     content: {
       rendered: "",
-      protected: false,
-    },
+      protected: false
+    }
   });
 });
 
-app.post("/render/", async (req, res) => {
+app.post('/render/', async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
 
-  if (!addr) {
-    return res.status(400).send("addr query param is required");
-  }
+  const templateResponse = await fetch(addr);
+  const pugTemplate = templateResponse.data;
 
-  try {
-    const templateResponse = await fetch(addr);
-    if (!templateResponse.ok) {
-      return res.status(502).send("template fetch error");
-    }
+  const compiled = pug.compile(pugTemplate);
+  const html = compiled({ random2, random3 });
 
-    let template = await templateResponse.text();
-
-    template = template
-      .replace(/{{\s*random2\s*}}/g, String(random2))
-      .replace(/{{\s*random3\s*}}/g, String(random3));
-
-    res.set("Content-Type", "text/html; charset=UTF-8");
-    res.send(template);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("render error");
-  }
+  res.set('Content-Type', 'text/html');
+  res.send(html);
 });
 
 app.get("/test/", async (req, res) => {
