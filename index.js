@@ -3,18 +3,18 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // важно: версия 2.x
 const { PNG } = require('pngjs');
 const crypto = require('crypto');
 const puppeteer = require('puppeteer');
-const axios = require('axios');
-const pug = require('pug');
+const https = require('https'); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
 // const selfsigned = require('selfsigned');
 
 const app = express();
 const upload = multer();
 
-const PORT = process.env.PORT || 3001;
+// Для Replit — PORT из окружения, дефолт 5000
+const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 const LOGIN = 'mypymypy';
 const uuid = '8155ee0b-ebea-4a53-93fe-a9ae47fb83ee';
@@ -53,6 +53,7 @@ const fetchPageHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
+// Общие заголовки
 app.use((_req, res, next) => {
   res.setHeader('Content-Type', 'text/plain; charset=UTF-8');
   res.setHeader('X-Author', uuid);
@@ -62,6 +63,11 @@ app.use((_req, res, next) => {
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+
+// Доп. health-check на всякий
+app.get('/health', (_req, res) => {
+  res.status(200).send('OK');
+});
 
 app.get('/', (_req, res) => {
   res.send(uuid);
@@ -103,14 +109,20 @@ app.all('/result4/', (req, res) => {
   res.end(JSON.stringify(payload));
 });
 
-//
-
+// Час по Москве
 app.get('/hour/', (_req, res) => {
   try {
-    const dtf = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', hour12: false });
+    const dtf = new Intl.DateTimeFormat('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      hour: '2-digit',
+      hour12: false
+    });
     const parts = dtf.formatToParts(new Date());
     const hourPart = parts.find(p => p.type === 'hour');
-    const hour = hourPart ? hourPart.value : new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }).split(',')[1].trim().split(':')[0];
+    const hour = hourPart
+      ? hourPart.value
+      : new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })
+          .split(',')[1].trim().split(':')[0];
     res.type('text/plain').send(hour.padStart(2, '0'));
   } catch (e) {
     const d = new Date();
@@ -120,33 +132,47 @@ app.get('/hour/', (_req, res) => {
   }
 });
 
-app.post('/decypher/', upload.fields([{ name: 'key' }, { name: 'secret' }]), (req, res) => {
-  try {
-    const keyFile = req.files['key'] && req.files['key'][0];
-    const secretFile = req.files['secret'] && req.files['secret'][0];
-    if (!keyFile || !secretFile) return res.status(400).send('missing files');
-    const keyPem = keyFile.buffer.toString('utf8');
-    const secretBuf = secretFile.buffer;
-
-    let decrypted;
+// RSA-decrypt
+app.post(
+  '/decypher/',
+  upload.fields([{ name: 'key' }, { name: 'secret' }]),
+  (req, res) => {
     try {
-      decrypted = crypto.privateDecrypt({ key: keyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, secretBuf);
-    } catch (e) {
-      decrypted = crypto.privateDecrypt({ key: keyPem, padding: crypto.constants.RSA_PKCS1_PADDING }, secretBuf);
-    }
-    res.type('text/plain').send(decrypted.toString('utf8'));
-  } catch (err) {
-    res.status(500).send('decryption failed');
-  }
-});
+      const keyFile = req.files['key'] && req.files['key'][0];
+      const secretFile = req.files['secret'] && req.files['secret'][0];
+      if (!keyFile || !secretFile) return res.status(400).send('missing files');
+      const keyPem = keyFile.buffer.toString('utf8');
+      const secretBuf = secretFile.buffer;
 
+      let decrypted;
+      try {
+        decrypted = crypto.privateDecrypt(
+          { key: keyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING },
+          secretBuf
+        );
+      } catch (e) {
+        decrypted = crypto.privateDecrypt(
+          { key: keyPem, padding: crypto.constants.RSA_PKCS1_PADDING },
+          secretBuf
+        );
+      }
+      res.type('text/plain').send(decrypted.toString('utf8'));
+    } catch (err) {
+      res.status(500).send('decryption failed');
+    }
+  }
+);
+
+// proxy к nd.kodaktor.ru
 app.get('/id/:n/', async (req, res) => {
   const n = req.params.n;
   const url = `https://nd.kodaktor.ru/users/${encodeURIComponent(n)}`;
   try {
     const r = await fetch(url, { method: 'GET', headers: {} });
     const json = await r.json();
-    if (json && json.login) return res.type('text/plain').send(String(json.login));
+    if (json && json.login) {
+      return res.type('text/plain').send(String(json.login));
+    }
     return res.status(502).send('no login');
   } catch (e) {
     res.status(500).send('proxy error');
@@ -196,8 +222,14 @@ app.post('/size2json/', upload.single('image'), (req, res) => {
 });
 
 app.get('/makeimage/', (req, res) => {
-  const w = Math.max(1, Math.min(2000, parseInt(req.query.width || '1', 10) || 1));
-  const h = Math.max(1, Math.min(2000, parseInt(req.query.height || '1', 10) || 1));
+  const w = Math.max(
+    1,
+    Math.min(2000, parseInt(req.query.width || '1', 10) || 1)
+  );
+  const h = Math.max(
+    1,
+    Math.min(2000, parseInt(req.query.height || '1', 10) || 1)
+  );
   const png = new PNG({ width: w, height: h });
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -261,57 +293,82 @@ app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
   });
 });
 
+// /render/ без axios и pug: простая текстовая подстановка {{random2}} / {{random3}}
 app.post('/render/', async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
 
-  const templateResponse = await axios.get(addr);
-  const pugTemplate = templateResponse.data;
+  if (!addr) {
+    return res.status(400).send('addr query param is required');
+  }
 
-  const compiled = pug.compile(pugTemplate);
-  const html = compiled({ random2, random3 });
+  try {
+    const templateResponse = await fetch(addr);
+    if (!templateResponse.ok) {
+      return res.status(502).send('template fetch error');
+    }
 
-  res.set('Content-Type', 'text/html');
-  res.send(html);
+    let template = await templateResponse.text();
+
+    template = template
+      .replace(/{{\s*random2\s*}}/g, String(random2))
+      .replace(/{{\s*random3\s*}}/g, String(random3));
+
+    res.set('Content-Type', 'text/html; charset=UTF-8');
+    res.send(template);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('render error');
+  }
 });
 
 app.get('/test/', async (req, res) => {
   const targetURL = req.query.URL;
+  if (!targetURL) {
+    return res.status(400).send('URL query param is required');
+  }
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: '/snap/bin/chromium',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  })
+  try {
+    const browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
 
-  const page = await browser.newPage();
-  await page.goto(targetURL, { waitUntil: 'networkidle2' });
+    const page = await browser.newPage();
+    await page.goto(targetURL, { waitUntil: 'networkidle2' });
 
-  await page.click('#bt');
+    await page.click('#bt');
 
-  await page.waitForFunction(() => {
-    const input = document.querySelector('#inp');
-    return input.value;
-  }, { timeout: 1000 });
+    await page.waitForFunction(() => {
+      const input = document.querySelector('#inp');
+      return input && input.value;
+    }, { timeout: 1000 });
 
-  const result = await page.evaluate(() => {
-    return document.querySelector('#inp').value;
-  });
+    const result = await page.evaluate(() => {
+      return document.querySelector('#inp').value;
+    });
 
-  await browser.close();
+    await browser.close();
 
-  res.send(result);
+    res.send(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('puppeteer error');
+  }
 });
 
+// В Replit оставляем HTTP — внешний HTTPS даёт сам Replit
 app.listen(PORT, HOST, () => {
   console.log(`HTTP server running at http://${HOST}:${PORT}`);
 });
 
+// Ниже — вариант локального HTTPS, НЕ для Replit Deployments:
+//
 // const certDir = path.join(__dirname, 'certs');
 // if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
 // const keyPath = path.join(certDir, 'key.pem');
 // const certPath = path.join(certDir, 'cert.pem');
-
+//
 // let credentials;
 // if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
 //   credentials = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
@@ -322,7 +379,7 @@ app.listen(PORT, HOST, () => {
 //   fs.writeFileSync(certPath, pems.cert);
 //   credentials = { key: pems.private, cert: pems.cert };
 // }
-
+//
 // https.createServer(credentials, app).listen(PORT, HOST, () => {
 //   console.log(`HTTPS server running at https://localhost:${PORT}`);
 // });
