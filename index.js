@@ -14,7 +14,7 @@ const app = express();
 const upload = multer();
 
 // Для Replit — PORT из окружения, дефолт 5000
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const HOST = process.env.HOST || "0.0.0.0";
 const LOGIN = "mypymypy";
 const uuid = "8155ee0b-ebea-4a53-93fe-a9ae47fb83ee";
@@ -102,6 +102,11 @@ app.get("/fetch/", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=UTF-8");
   res.send(fetchPageHtml);
 });
+
+
+app.use(express.json());
+app.use(express.text());
+app.use(express.urlencoded({ extended: true }));
 
 app.all("/result4/", (req, res) => {
   const xTest = req.get("x-test") || "";
@@ -302,9 +307,6 @@ app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
     },
   });
 });
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
 app.post("/render/", async (req, res) => {
   const { random2, random3 } = req.body;
