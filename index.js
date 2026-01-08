@@ -53,11 +53,12 @@ const fetchPageHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// Общие заголовки
 app.use((_req, res, next) => {
   res.setHeader('Content-Type', 'text/plain; charset=UTF-8');
   res.setHeader('X-Author', uuid);
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
   next();
 });
 
@@ -83,6 +84,21 @@ const sampleFnCode = `function task(x) {
 
 app.get('/sample/', (_req, res) => {
   res.send(sampleFnCode);
+});
+
+const promiseFnCode = `function task(x){
+  return new Promise(function(resolve, reject){
+    if (x < 18){
+      resolve('yes');
+    } else {
+      reject('no');
+    }
+  });
+}`;
+
+app.get('/promise/', (_req, res) => {
+  // на всякий случай явно укажем text/plain
+  res.type('text/plain; charset=UTF-8').send(promiseFnCode);
 });
 
 app.get('/fetch/', (_req, res) => {
