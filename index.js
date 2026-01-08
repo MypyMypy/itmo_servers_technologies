@@ -106,12 +106,10 @@ app.get("/fetch/", (_req, res) => {
 app.all("/result4/", (req, res) => {
   const xTest = req.get("x-test") || "";
 
-  let bodyValue = "";
-
   const payload = {
     message: uuid,
-    "x-result": String(req.body[0] || req.body.value),
-    "x-body": bodyValue,
+    "x-result": xTest,
+    "x-body": String(req.body[0] || req.body.value),
   };
 
   res.setHeader("Content-Type", "application/json");
