@@ -62,8 +62,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.use(express.json());
-
 // Доп. health-check на всякий
 app.get("/health", (_req, res) => {
   res.status(200).send("OK");
@@ -315,6 +313,7 @@ app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
   });
 });
 
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.post("/render/", async (req, res) => {
