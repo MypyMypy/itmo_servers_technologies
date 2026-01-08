@@ -1,13 +1,13 @@
 // const fs = require('fs');
 // const path = require('path');
-const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const fetch = require('node-fetch'); // важно: версия 2.x
-const { PNG } = require('pngjs');
-const crypto = require('crypto');
-const puppeteer = require('puppeteer');
-const https = require('https'); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
+const express = require("express");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const fetch = require("node-fetch"); // важно: версия 2.x
+const { PNG } = require("pngjs");
+const crypto = require("crypto");
+const puppeteer = require("puppeteer");
+const https = require("https"); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
 // const selfsigned = require('selfsigned');
 
 const app = express();
@@ -15,9 +15,9 @@ const upload = multer();
 
 // Для Replit — PORT из окружения, дефолт 5000
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || '0.0.0.0';
-const LOGIN = 'mypymypy';
-const uuid = '8155ee0b-ebea-4a53-93fe-a9ae47fb83ee';
+const HOST = process.env.HOST || "0.0.0.0";
+const LOGIN = "mypymypy";
+const uuid = "8155ee0b-ebea-4a53-93fe-a9ae47fb83ee";
 
 const fetchPageHtml = `<!DOCTYPE html>
 <html lang="ru">
@@ -54,26 +54,26 @@ const fetchPageHtml = `<!DOCTYPE html>
 </html>`;
 
 app.use((_req, res, next) => {
-  res.setHeader('Content-Type', 'text/plain; charset=UTF-8');
-  res.setHeader('X-Author', uuid);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader("Content-Type", "text/plain; charset=UTF-8");
+  res.setHeader("X-Author", uuid);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "*");
   next();
 });
 
 app.use(express.json());
 
 // Доп. health-check на всякий
-app.get('/health', (_req, res) => {
-  res.status(200).send('OK');
+app.get("/health", (_req, res) => {
+  res.status(200).send("OK");
 });
 
-app.get('/', (_req, res) => {
+app.get("/", (_req, res) => {
   res.send(uuid);
 });
 
-app.get('/login/', (_req, res) => {
+app.get("/login/", (_req, res) => {
   res.send(uuid);
 });
 
@@ -81,7 +81,7 @@ const sampleFnCode = `function task(x) {
   return x * this * this;
 }`;
 
-app.get('/sample/', (_req, res) => {
+app.get("/sample/", (_req, res) => {
   res.send(sampleFnCode);
 });
 
@@ -95,73 +95,75 @@ const promiseFnCode = `function task(x){
   });
 }`;
 
-app.get('/promise/', (_req, res) => {
+app.get("/promise/", (_req, res) => {
   // на всякий случай явно укажем text/plain
-  res.type('text/plain; charset=UTF-8').send(promiseFnCode);
+  res.type("text/plain; charset=UTF-8").send(promiseFnCode);
 });
 
-app.get('/fetch/', (_req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+app.get("/fetch/", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=UTF-8");
   res.send(fetchPageHtml);
 });
 
-app.all('/result4/', (req, res) => {
-  const xTest = req.get('x-test') || '';
+app.all("/result4/", (req, res) => {
+  const xTest = req.get("x-test") || "";
 
-  let bodyValue = '';
+  let bodyValue = "";
 
-  if (typeof req.body === 'string') {
+  if (typeof req.body === "string") {
     bodyValue = req.body;
-  } else if (req.body && typeof req.body === 'object') {
+  } else if (req.body && typeof req.body === "object") {
     bodyValue = Object.entries(req.body)
       .map(([key, value]) => `${key}=${value}`)
-      .join('&');
+      .join("&");
   }
 
   const payload = {
     message: uuid,
-    'x-result': xTest,
-    'x-body': bodyValue,
+    "x-result": xTest,
+    "x-body": bodyValue,
   };
 
-  res.setHeader('Content-Type', 'application/json');
+  res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(payload));
 });
 
-
 // Час по Москве
-app.get('/hour/', (_req, res) => {
+app.get("/hour/", (_req, res) => {
   try {
-    const dtf = new Intl.DateTimeFormat('ru-RU', {
-      timeZone: 'Europe/Moscow',
-      hour: '2-digit',
-      hour12: false
+    const dtf = new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      hour: "2-digit",
+      hour12: false,
     });
     const parts = dtf.formatToParts(new Date());
-    const hourPart = parts.find(p => p.type === 'hour');
+    const hourPart = parts.find((p) => p.type === "hour");
     const hour = hourPart
       ? hourPart.value
-      : new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })
-          .split(',')[1].trim().split(':')[0];
-    res.type('text/plain').send(hour.padStart(2, '0'));
+      : new Date()
+          .toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })
+          .split(",")[1]
+          .trim()
+          .split(":")[0];
+    res.type("text/plain").send(hour.padStart(2, "0"));
   } catch (e) {
     const d = new Date();
-    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
     const mosk = new Date(utc + 3 * 3600000);
-    res.type('text/plain').send(String(mosk.getHours()).padStart(2, '0'));
+    res.type("text/plain").send(String(mosk.getHours()).padStart(2, "0"));
   }
 });
 
 // RSA-decrypt
 app.post(
-  '/decypher/',
-  upload.fields([{ name: 'key' }, { name: 'secret' }]),
+  "/decypher/",
+  upload.fields([{ name: "key" }, { name: "secret" }]),
   (req, res) => {
     try {
-      const keyFile = req.files['key'] && req.files['key'][0];
-      const secretFile = req.files['secret'] && req.files['secret'][0];
-      if (!keyFile || !secretFile) return res.status(400).send('missing files');
-      const keyPem = keyFile.buffer.toString('utf8');
+      const keyFile = req.files["key"] && req.files["key"][0];
+      const secretFile = req.files["secret"] && req.files["secret"][0];
+      if (!keyFile || !secretFile) return res.status(400).send("missing files");
+      const keyPem = keyFile.buffer.toString("utf8");
       const secretBuf = secretFile.buffer;
 
       let decrypted;
@@ -176,26 +178,26 @@ app.post(
           secretBuf
         );
       }
-      res.type('text/plain').send(decrypted.toString('utf8'));
+      res.type("text/plain").send(decrypted.toString("utf8"));
     } catch (err) {
-      res.status(500).send('decryption failed');
+      res.status(500).send("decryption failed");
     }
   }
 );
 
 // proxy к nd.kodaktor.ru
-app.get('/id/:n/', async (req, res) => {
+app.get("/id/:n/", async (req, res) => {
   const n = req.params.n;
   const url = `https://nd.kodaktor.ru/users/${encodeURIComponent(n)}`;
   try {
-    const r = await fetch(url, { method: 'GET', headers: {} });
+    const r = await fetch(url, { method: "GET", headers: {} });
     const json = await r.json();
     if (json && json.login) {
-      return res.type('text/plain').send(String(json.login));
+      return res.type("text/plain").send(String(json.login));
     }
-    return res.status(502).send('no login');
+    return res.status(502).send("no login");
   } catch (e) {
-    res.status(500).send('proxy error');
+    res.status(500).send("proxy error");
   }
 });
 
@@ -225,30 +227,30 @@ app.get('/id/:n/', async (req, res) => {
 //   }
 // });
 
-app.post('/size2json/', upload.single('image'), (req, res) => {
+app.post("/size2json/", upload.single("image"), (req, res) => {
   try {
     const file = req.file;
-    if (!file) return res.status(400).send('missing image');
+    if (!file) return res.status(400).send("missing image");
 
     const buf = file.buffer;
-    if (buf.length < 24) return res.status(400).send('not a png');
+    if (buf.length < 24) return res.status(400).send("not a png");
 
     const width = buf.readUInt32BE(16);
     const height = buf.readUInt32BE(20);
-    res.type('application/json').send(JSON.stringify({ width, height }));
+    res.type("application/json").send(JSON.stringify({ width, height }));
   } catch (e) {
-    res.status(500).send('parse error');
+    res.status(500).send("parse error");
   }
 });
 
-app.get('/makeimage/', (req, res) => {
+app.get("/makeimage/", (req, res) => {
   const w = Math.max(
     1,
-    Math.min(2000, parseInt(req.query.width || '1', 10) || 1)
+    Math.min(2000, parseInt(req.query.width || "1", 10) || 1)
   );
   const h = Math.max(
     1,
-    Math.min(2000, parseInt(req.query.height || '1', 10) || 1)
+    Math.min(2000, parseInt(req.query.height || "1", 10) || 1)
   );
   const png = new PNG({ width: w, height: h });
   for (let y = 0; y < h; y++) {
@@ -260,7 +262,7 @@ app.get('/makeimage/', (req, res) => {
       png.data[idx + 3] = 255; // A
     }
   }
-  res.setHeader('Content-Type', 'image/png');
+  res.setHeader("Content-Type", "image/png");
   png.pack().pipe(res);
 });
 
@@ -269,14 +271,14 @@ const userSchema = new mongoose.Schema(
     login: String,
     password: String,
   },
-  { collection: 'users' }
+  { collection: "users" }
 );
 
-app.post('/insert/', async (req, res) => {
+app.post("/insert/", async (req, res) => {
   const { login, password, URL } = req.body;
 
   if (!login || !password || !URL) {
-    res.status(400).send('login, password и URL обязательны');
+    res.status(400).send("login, password и URL обязательны");
     return;
   }
 
@@ -286,49 +288,47 @@ app.post('/insert/', async (req, res) => {
       useUnifiedTopology: true,
     });
 
-    const User = conn.model('User', userSchema);
+    const User = conn.model("User", userSchema);
 
     await User.create({ login, password });
 
     await conn.close();
 
-    res.status(200).send('ok');
+    res.status(200).send("ok");
   } catch (err) {
     console.error(err);
-    res.status(500).send('db error');
+    res.status(500).send("db error");
   }
 });
 
-app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
+app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
   res.json({
     id: 1,
     slug: uuid,
     title: {
-      rendered: uuid
+      rendered: uuid,
     },
     content: {
       rendered: "",
-      protected: false
-    }
+      protected: false,
+    },
   });
 });
 
-
 app.use(express.urlencoded({ extended: false }));
 
-
-app.post('/render/', async (req, res) => {
+app.post("/render/", async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
 
   if (!addr) {
-    return res.status(400).send('addr query param is required');
+    return res.status(400).send("addr query param is required");
   }
 
   try {
     const templateResponse = await fetch(addr);
     if (!templateResponse.ok) {
-      return res.status(502).send('template fetch error');
+      return res.status(502).send("template fetch error");
     }
 
     let template = await templateResponse.text();
@@ -337,38 +337,41 @@ app.post('/render/', async (req, res) => {
       .replace(/{{\s*random2\s*}}/g, String(random2))
       .replace(/{{\s*random3\s*}}/g, String(random3));
 
-    res.set('Content-Type', 'text/html; charset=UTF-8');
+    res.set("Content-Type", "text/html; charset=UTF-8");
     res.send(template);
   } catch (e) {
     console.error(e);
-    res.status(500).send('render error');
+    res.status(500).send("render error");
   }
 });
 
-app.get('/test/', async (req, res) => {
+app.get("/test/", async (req, res) => {
   const targetURL = req.query.URL;
   if (!targetURL) {
-    return res.status(400).send('URL query param is required');
+    return res.status(400).send("URL query param is required");
   }
 
   try {
     const browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
-    await page.goto(targetURL, { waitUntil: 'networkidle2' });
+    await page.goto(targetURL, { waitUntil: "networkidle2" });
 
-    await page.click('#bt');
+    await page.click("#bt");
 
-    await page.waitForFunction(() => {
-      const input = document.querySelector('#inp');
-      return input && input.value;
-    }, { timeout: 1000 });
+    await page.waitForFunction(
+      () => {
+        const input = document.querySelector("#inp");
+        return input && input.value;
+      },
+      { timeout: 1000 }
+    );
 
     const result = await page.evaluate(() => {
-      return document.querySelector('#inp').value;
+      return document.querySelector("#inp").value;
     });
 
     await browser.close();
@@ -376,7 +379,7 @@ app.get('/test/', async (req, res) => {
     res.send(result);
   } catch (e) {
     console.error(e);
-    res.status(500).send('puppeteer error');
+    res.status(500).send("puppeteer error");
   }
 });
 
