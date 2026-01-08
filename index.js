@@ -315,6 +315,8 @@ app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
   });
 });
 
+app.use(express.json());
+
 app.post('/render/', async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
