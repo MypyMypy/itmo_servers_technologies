@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const express = require('express');
 const multer = require('multer');
 const fetch = require('node-fetch');
@@ -127,22 +126,26 @@ app.get('/makeimage', (req, res) => {
   png.pack().pipe(res);
 });
 
-const certDir = path.join(__dirname, 'certs');
-if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
-const keyPath = path.join(certDir, 'key.pem');
-const certPath = path.join(certDir, 'cert.pem');
-
-let credentials;
-if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-  credentials = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
-} else {
-  const attrs = [{ name: 'commonName', value: 'localhost' }];
-  const pems = selfsigned.generate(attrs, { days: 365 });
-  fs.writeFileSync(keyPath, pems.private);
-  fs.writeFileSync(certPath, pems.cert);
-  credentials = { key: pems.private, cert: pems.cert };
-}
-
-https.createServer(credentials, app).listen(PORT, HOST, () => {
-  console.log(`HTTPS server running at https://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`HTTP server running at http://${HOST}:${PORT}`);
 });
+
+// const certDir = path.join(__dirname, 'certs');
+// if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
+// const keyPath = path.join(certDir, 'key.pem');
+// const certPath = path.join(certDir, 'cert.pem');
+
+// let credentials;
+// if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+//   credentials = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+// } else {
+//   const attrs = [{ name: 'commonName', value: 'localhost' }];
+//   const pems = selfsigned.generate(attrs, { days: 365 });
+//   fs.writeFileSync(keyPath, pems.private);
+//   fs.writeFileSync(certPath, pems.cert);
+//   credentials = { key: pems.private, cert: pems.cert };
+// }
+
+// https.createServer(credentials, app).listen(PORT, HOST, () => {
+//   console.log(`HTTPS server running at https://localhost:${PORT}`);
+// });
