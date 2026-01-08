@@ -8,13 +8,11 @@ const { PNG } = require("pngjs");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
 const pug = require("pug");
-const https = require("https"); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
-// const selfsigned = require('selfsigned');
+const https = require("https");
 
 const app = express();
 const upload = multer();
 
-// Для Replit — PORT из окружения, дефолт 5000
 const PORT = process.env.PORT || 5001;
 const HOST = process.env.HOST || "0.0.0.0";
 const LOGIN = "mypymypy";
@@ -329,39 +327,44 @@ app.post("/render/", async (req, res) => {
 
 app.get("/test/", async (req, res) => {
   const targetURL = req.query.URL;
-  if (!targetURL) {
-    return res.status(400).send("URL query param is required");
-  }
 
-  try {
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+  let browser;
+  browser = await puppeteer.launch({
+    headless: "new",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
+  });
 
-    const page = await browser.newPage();
-    await page.goto(targetURL, { waitUntil: "networkidle2" });
+  const page = await browser.newPage();
+  await page.goto(targetURL, {
+    waitUntil: "domcontentloaded",
+    timeout: 15000,
+  });
 
-    await page.click("#bt");
+  await page.waitForSelector("#bt", { timeout: 5000 });
+  await page.waitForSelector("#inp", { timeout: 5000 });
 
-    await page.waitForFunction(
-      () => {
-        const input = document.querySelector("#inp");
-        return input && input.value;
-      },
-      { timeout: 1000 }
-    );
+  await page.click("#bt");
 
-    const result = await page.evaluate(() => {
-      return document.querySelector("#inp").value;
-    });
+  const result = await page.waitForFunction(
+    () => {
+      const input = document.querySelector("#inp");
+      return input && input.value && input.value.trim().length > 0
+        ? input.value
+        : false;
+    },
+    { timeout: 5000 }
+  );
 
+  const value = await result.jsonValue();
+
+  res.type("text/plain").send(String(value));
+  res.status(500).type("text/plain").send("puppeteer error");
+  if (browser) {
     await browser.close();
-
-    res.send(result);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("puppeteer error");
   }
 });
 
