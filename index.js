@@ -3,11 +3,11 @@
 const express = require("express");
 const multer = require("multer");
 const fetch = require("node-fetch");
-const { MongoClient } = require('mongodb');
+const { MongoClient } = require("mongodb");
 const { PNG } = require("pngjs");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
-const pug = require('pug');
+const pug = require("pug");
 const https = require("https"); // для исходящих HTTPS-запросов (и потенциального TLS-сервера)
 // const selfsigned = require('selfsigned');
 
@@ -104,26 +104,22 @@ app.get("/fetch/", (_req, res) => {
   res.send(fetchPageHtml);
 });
 
-app.all(
-  "/result4/",
-  express.text({ type: "*/*" }),
-  (req, res) => {
-    const xTest = req.get("x-test") || "";
+app.all("/result4/", express.text({ type: "*/*" }), (req, res) => {
+  const xTest = req.get("x-test") || "";
 
-    // Здесь req.body ГАРАНТИРОВАННО строка,
-    // даже если тестер шлёт form-data, urlencoded или чистый текст
-    const bodyValue = typeof req.body === "string" ? req.body : "";
+  // Здесь req.body ГАРАНТИРОВАННО строка,
+  // даже если тестер шлёт form-data, urlencoded или чистый текст
+  const bodyValue = typeof req.body === "string" ? req.body : "";
 
-    const payload = {
-      message: uuid,
-      "x-result": xTest,
-      "x-body": bodyValue,
-    };
+  const payload = {
+    message: uuid,
+    "x-result": xTest,
+    "x-body": bodyValue,
+  };
 
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(payload));
-  }
-);
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(payload));
+});
 
 // Час по Москве
 app.get("/hour/", (_req, res) => {
@@ -265,7 +261,7 @@ app.get("/makeimage/", (req, res) => {
 
 app.use(express.urlencoded({ extended: true }));
 
-app.post('/insert/', async (req, res) => {
+app.post("/insert/", async (req, res) => {
   let client;
 
   try {
@@ -273,20 +269,20 @@ app.post('/insert/', async (req, res) => {
 
     client = new MongoClient(URL, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
     });
 
     await client.connect();
 
-    const dbName = URL.split('/').pop().split('?')[0];
+    const dbName = URL.split("/").pop().split("?")[0];
     const db = client.db(dbName);
 
-    const usersCollection = db.collection('users');
+    const usersCollection = db.collection("users");
 
     const userDocument = {
       login: login,
       password: password,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
     await usersCollection.insertOne(userDocument);
@@ -301,33 +297,33 @@ app.post('/insert/', async (req, res) => {
   }
 });
 
-app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
+app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
   res.json({
     id: 1,
     slug: uuid,
     title: {
-      rendered: uuid
+      rendered: uuid,
     },
     content: {
       rendered: "",
-      protected: false
-    }
+      protected: false,
+    },
   });
 });
 
 app.use(express.json());
 
-app.post('/render/', async (req, res) => {
+app.post("/render/", async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
 
   const templateResponse = await fetch(addr);
-  const pugTemplate = templateResponse.data;
+  const pugTemplate = await templateResponse.text();
 
   const compiled = pug.compile(pugTemplate);
   const html = compiled({ random2, random3 });
 
-  res.set('Content-Type', 'text/html');
+  res.set("Content-Type", "text/html; charset=UTF-8");
   res.send(html);
 });
 
