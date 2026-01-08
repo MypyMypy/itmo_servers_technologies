@@ -105,7 +105,7 @@ app.get("/fetch/", (_req, res) => {
 
 app.all(
   "/result4/",
-  express.text({ type: "*/*" }), // <-- ключевая строка
+  express.text({ type: "*/*" }),
   (req, res) => {
     const xTest = req.get("x-test") || "";
 
@@ -269,6 +269,8 @@ const userSchema = new mongoose.Schema(
   },
   { collection: "users" }
 );
+
+app.use(express.urlencoded({ extended: true }));
 
 app.post("/insert/", async (req, res) => {
   const { login, password, URL } = req.body;
