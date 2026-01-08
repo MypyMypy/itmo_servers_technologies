@@ -109,7 +109,7 @@ app.all("/result4/", (req, res) => {
   const payload = {
     message: uuid,
     "x-result": xTest,
-    "x-body": String(req.body[0] || req.body.value),
+    "x-body": String(req.body || req.body?.value),
   };
 
   res.setHeader("Content-Type", "application/json");
