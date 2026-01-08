@@ -103,7 +103,6 @@ app.get("/fetch/", (_req, res) => {
   res.send(fetchPageHtml);
 });
 
-
 app.use(express.json());
 app.use(express.text());
 app.use(express.urlencoded({ extended: true }));
@@ -111,10 +110,29 @@ app.use(express.urlencoded({ extended: true }));
 app.all("/result4/", (req, res) => {
   const xTest = req.get("x-test") || "";
 
+  // Безопасное получение body
+  let bodyValue;
+
+  if (typeof req.body === "string") {
+    // Если body пришло как строка
+    bodyValue = req.body;
+  } else if (req.body && typeof req.body === "object") {
+    // Если body пришло как объект
+    if (req.body.value !== undefined) {
+      bodyValue = req.body.value;
+    } else {
+      // Берем первое значение объекта
+      const keys = Object.keys(req.body);
+      if (keys.length > 0) {
+        bodyValue = req.body[keys[0]];
+      }
+    }
+  }
+
   const payload = {
-    message: uuid,
+    message: uuid, // убедитесь, что uuid объявлен
     "x-result": xTest,
-    "x-body": String(req.body || req.body?.value),
+    "x-body": String(bodyValue || ""),
   };
 
   res.setHeader("Content-Type", "application/json");
