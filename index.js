@@ -103,41 +103,26 @@ app.get("/fetch/", (_req, res) => {
   res.send(fetchPageHtml);
 });
 
-app.use(express.json());
-app.use(express.text());
-app.use(express.urlencoded({ extended: true }));
+app.all(
+  "/result4/",
+  express.text({ type: "*/*" }), // <-- ключевая строка
+  (req, res) => {
+    const xTest = req.get("x-test") || "";
 
-app.all("/result4/", (req, res) => {
-  const xTest = req.get("x-test") || "";
+    // Здесь req.body ГАРАНТИРОВАННО строка,
+    // даже если тестер шлёт form-data, urlencoded или чистый текст
+    const bodyValue = typeof req.body === "string" ? req.body : "";
 
-  // Безопасное получение body
-  let bodyValue;
+    const payload = {
+      message: uuid,
+      "x-result": xTest,
+      "x-body": bodyValue,
+    };
 
-  if (typeof req.body === "string") {
-    // Если body пришло как строка
-    bodyValue = req.body;
-  } else if (req.body && typeof req.body === "object") {
-    // Если body пришло как объект
-    if (req.body.value !== undefined) {
-      bodyValue = req.body.value;
-    } else {
-      // Берем первое значение объекта
-      const keys = Object.keys(req.body);
-      if (keys.length > 0) {
-        bodyValue = req.body[keys[0]];
-      }
-    }
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(payload));
   }
-
-  const payload = {
-    message: uuid, // убедитесь, что uuid объявлен
-    "x-result": xTest,
-    "x-body": String(bodyValue || ""),
-  };
-
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(payload));
-});
+);
 
 // Час по Москве
 app.get("/hour/", (_req, res) => {
