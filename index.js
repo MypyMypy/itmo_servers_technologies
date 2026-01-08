@@ -1,11 +1,13 @@
-const fs = require('fs');
-const path = require('path');
+// const fs = require('fs');
+// const path = require('path');
 const express = require('express');
+const mongoose = require('mongoose');
 const multer = require('multer');
 const fetch = require('node-fetch');
 const { PNG } = require('pngjs');
 const crypto = require('crypto');
-const selfsigned = require('selfsigned');
+const puppeteer = require('puppeteer');
+// const selfsigned = require('selfsigned');
 
 const app = express();
 const upload = multer();
@@ -13,12 +15,92 @@ const upload = multer();
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const LOGIN = 'mypymypy';
+const uuid = '8155ee0b-ebea-4a53-93fe-a9ae47fb83ee';
 
-app.get('/login', (_req, res) => {
-  res.type('text/plain').send(LOGIN);
+const fetchPageHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Fetch task</title>
+</head>
+<body>
+  <input id="inp" type="text">
+  <button id="bt">Go</button>
+
+  <script>
+    (function () {
+      const inp = document.getElementById('inp');
+      const bt = document.getElementById('bt');
+
+      bt.addEventListener('click', function () {
+        const url = inp.value;
+        fetch(url)
+          .then(function (response) {
+            return response.text();
+          })
+          .then(function (text) {
+            inp.value = text;
+          })
+          .catch(function (err) {
+            // на случай ошибки что-то пишем в поле
+            inp.value = 'Error: ' + err;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>`;
+
+app.use((_req, res, next) => {
+  res.setHeader('Content-Type', 'text/plain; charset=UTF-8');
+  res.setHeader('X-Author', uuid);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
 });
 
-app.get('/hour', (_req, res) => {
+app.get('/', (_req, res) => {
+  res.send(uuid);
+});
+
+app.get('/login/', (_req, res) => {
+  res.send(uuid);
+});
+
+const sampleFnCode = `function task(x) {
+  return x * this * this;
+}`;
+
+app.get('/sample/', (_req, res) => {
+  res.send(sampleFnCode);
+});
+
+app.get('/fetch/', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+  res.send(fetchPageHtml);
+});
+
+app.all('/result4/', (req, res) => {
+  const xTest = req.get('x-test') || '';
+
+  const bodyValue =
+    typeof req.body === 'string'
+      ? req.body
+      : JSON.stringify(req.body);
+
+  const payload = {
+    message: MESSAGE,
+    'x-result': xTest,
+    'x-body': bodyValue,
+  };
+
+  // строго задаём Content-Type = application/json
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
+});
+
+//
+
+app.get('/hour/', (_req, res) => {
   try {
     const dtf = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', hour12: false });
     const parts = dtf.formatToParts(new Date());
@@ -33,8 +115,7 @@ app.get('/hour', (_req, res) => {
   }
 });
 
-// /decypher: multipart form fields: key (file), secret (file)
-app.post('/decypher', upload.fields([{ name: 'key' }, { name: 'secret' }]), (req, res) => {
+app.post('/decypher/', upload.fields([{ name: 'key' }, { name: 'secret' }]), (req, res) => {
   try {
     const keyFile = req.files['key'] && req.files['key'][0];
     const secretFile = req.files['secret'] && req.files['secret'][0];
@@ -54,7 +135,7 @@ app.post('/decypher', upload.fields([{ name: 'key' }, { name: 'secret' }]), (req
   }
 });
 
-app.get('/id/:n', async (req, res) => {
+app.get('/id/:n/', async (req, res) => {
   const n = req.params.n;
   const url = `https://nd.kodaktor.ru/users/${encodeURIComponent(n)}`;
   try {
@@ -67,7 +148,7 @@ app.get('/id/:n', async (req, res) => {
   }
 });
 
-app.get('/chunks', (req, res) => {
+app.get('/chunks/', (_req, res) => {
   try {
     const postData = `login=${encodeURIComponent(LOGIN)}`;
     const options = {
@@ -93,7 +174,7 @@ app.get('/chunks', (req, res) => {
   }
 });
 
-app.post('/size2json', upload.single('image'), (req, res) => {
+app.post('/size2json/', upload.single('image'), (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).send('missing image');
@@ -109,7 +190,7 @@ app.post('/size2json', upload.single('image'), (req, res) => {
   }
 });
 
-app.get('/makeimage', (req, res) => {
+app.get('/makeimage/', (req, res) => {
   const w = Math.max(1, Math.min(2000, parseInt(req.query.width || '1', 10) || 1));
   const h = Math.max(1, Math.min(2000, parseInt(req.query.height || '1', 10) || 1));
   const png = new PNG({ width: w, height: h });
@@ -124,6 +205,101 @@ app.get('/makeimage', (req, res) => {
   }
   res.setHeader('Content-Type', 'image/png');
   png.pack().pipe(res);
+});
+
+app.use(express.urlencoded({ extended: false }));
+
+const userSchema = new mongoose.Schema(
+  {
+    login: String,
+    password: String,
+  },
+  { collection: 'users' }
+);
+
+app.post('/insert/', async (req, res) => {
+  const { login, password, URL } = req.body;
+
+  if (!login || !password || !URL) {
+    res.status(400).send('login, password и URL обязательны');
+    return;
+  }
+
+  try {
+    const conn = await mongoose.createConnection(URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    const User = conn.model('User', userSchema);
+
+    await User.create({ login, password });
+
+    await conn.close();
+
+    res.status(200).send('ok');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('db error');
+  }
+});
+
+app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
+  res.json({
+    id: 1,
+    slug: uuid,
+    title: {
+      rendered: uuid
+    },
+    content: {
+      rendered: "",
+      protected: false
+    }
+  });
+});
+
+app.use(express.json());
+
+app.post('/render/', async (req, res) => {
+  const { random2, random3 } = req.body;
+  const { addr } = req.query;
+
+  const templateResponse = await axios.get(addr);
+  const pugTemplate = templateResponse.data;
+
+  const compiled = pug.compile(pugTemplate);
+  const html = compiled({ random2, random3 });
+
+  res.set('Content-Type', 'text/html');
+  res.send(html);
+});
+
+app.get('/test/', async (req, res) => {
+  const targetURL = req.query.URL;
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: '/snap/bin/chromium',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  })
+
+  const page = await browser.newPage();
+  await page.goto(targetURL, { waitUntil: 'networkidle2' });
+
+  await page.click('#bt');
+
+  await page.waitForFunction(() => {
+    const input = document.querySelector('#inp');
+    return input.value;
+  }, { timeout: 1000 });
+
+  const result = await page.evaluate(() => {
+    return document.querySelector('#inp').value;
+  });
+
+  await browser.close();
+
+  res.send(result);
 });
 
 app.listen(PORT, HOST, () => {
