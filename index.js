@@ -7,6 +7,8 @@ const fetch = require('node-fetch');
 const { PNG } = require('pngjs');
 const crypto = require('crypto');
 const puppeteer = require('puppeteer');
+const axios = require('axios');
+const pug = require('pug');
 // const selfsigned = require('selfsigned');
 
 const app = express();
@@ -58,6 +60,9 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
 app.get('/', (_req, res) => {
   res.send(uuid);
 });
@@ -88,7 +93,7 @@ app.all('/result4/', (req, res) => {
       : JSON.stringify(req.body);
 
   const payload = {
-    message: MESSAGE,
+    message: uuid,
     'x-result': xTest,
     'x-body': bodyValue,
   };
@@ -148,31 +153,31 @@ app.get('/id/:n/', async (req, res) => {
   }
 });
 
-app.get('/chunks/', (_req, res) => {
-  try {
-    const postData = `login=${encodeURIComponent(LOGIN)}`;
-    const options = {
-      hostname: 'kodaktor.ru',
-      path: '/api/chunks',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-    const reqUp = https.request(options, upstreamRes => {
-      let count = 0;
-      upstreamRes.on('data', () => { count++; });
-      upstreamRes.on('end', () => { res.type('text/plain').send(String(count)); });
-      upstreamRes.on('error', () => { res.status(500).send('upstream error'); });
-    });
-    reqUp.on('error', () => { res.status(500).send('request error'); });
-    reqUp.write(postData);
-    reqUp.end();
-  } catch (e) {
-    res.status(500).send('internal error');
-  }
-});
+// app.get('/chunks/', (_req, res) => {
+//   try {
+//     const postData = `login=${encodeURIComponent(LOGIN)}`;
+//     const options = {
+//       hostname: 'kodaktor.ru',
+//       path: '/api/chunks',
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/x-www-form-urlencoded',
+//         'Content-Length': Buffer.byteLength(postData)
+//       }
+//     };
+//     const reqUp = https.request(options, upstreamRes => {
+//       let count = 0;
+//       upstreamRes.on('data', () => { count++; });
+//       upstreamRes.on('end', () => { res.type('text/plain').send(String(count)); });
+//       upstreamRes.on('error', () => { res.status(500).send('upstream error'); });
+//     });
+//     reqUp.on('error', () => { res.status(500).send('request error'); });
+//     reqUp.write(postData);
+//     reqUp.end();
+//   } catch (e) {
+//     res.status(500).send('internal error');
+//   }
+// });
 
 app.post('/size2json/', upload.single('image'), (req, res) => {
   try {
@@ -206,8 +211,6 @@ app.get('/makeimage/', (req, res) => {
   res.setHeader('Content-Type', 'image/png');
   png.pack().pipe(res);
 });
-
-app.use(express.urlencoded({ extended: false }));
 
 const userSchema = new mongoose.Schema(
   {
@@ -257,8 +260,6 @@ app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
     }
   });
 });
-
-app.use(express.json());
 
 app.post('/render/', async (req, res) => {
   const { random2, random3 } = req.body;
