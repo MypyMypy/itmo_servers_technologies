@@ -108,17 +108,9 @@ app.all("/result4/", (req, res) => {
 
   let bodyValue = "";
 
-  if (typeof req.body === "string") {
-    bodyValue = req.body;
-  } else if (req.body && typeof req.body === "object") {
-    bodyValue = Object.entries(req.body)
-      .map(([key, value]) => `${key}=${value}`)
-      .join("&");
-  }
-
   const payload = {
     message: uuid,
-    "x-result": xTest,
+    "x-result": String(req.body[0] || req.body.value),
     "x-body": bodyValue,
   };
 
