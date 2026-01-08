@@ -62,7 +62,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 // Доп. health-check на всякий
@@ -109,10 +108,15 @@ app.get('/fetch/', (_req, res) => {
 app.all('/result4/', (req, res) => {
   const xTest = req.get('x-test') || '';
 
-  const bodyValue =
-    typeof req.body === 'string'
-      ? req.body
-      : JSON.stringify(req.body);
+  let bodyValue = '';
+
+  if (typeof req.body === 'string') {
+    bodyValue = req.body;
+  } else if (req.body && typeof req.body === 'object') {
+    bodyValue = Object.entries(req.body)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('&');
+  }
 
   const payload = {
     message: uuid,
@@ -120,10 +124,10 @@ app.all('/result4/', (req, res) => {
     'x-body': bodyValue,
   };
 
-  // строго задаём Content-Type = application/json
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(payload));
 });
+
 
 // Час по Москве
 app.get('/hour/', (_req, res) => {
@@ -309,7 +313,10 @@ app.get('/wordpress/wp-json/wp/v2/posts/1', (_, res) => {
   });
 });
 
-// /render/ без axios и pug: простая текстовая подстановка {{random2}} / {{random3}}
+
+app.use(express.urlencoded({ extended: false }));
+
+
 app.post('/render/', async (req, res) => {
   const { random2, random3 } = req.body;
   const { addr } = req.query;
