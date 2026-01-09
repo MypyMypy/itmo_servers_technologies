@@ -12,6 +12,7 @@ import pug from "pug";
 
 import appSrc from "./app.js";
 
+import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { MongoClient } = require("mongodb");
 
