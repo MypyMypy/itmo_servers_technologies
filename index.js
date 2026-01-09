@@ -1,23 +1,25 @@
-const fs = require('fs');
-// const path = require('path');
-const express = require("express");
-const multer = require("multer");
-const fetch = require("node-fetch");
-const { MongoClient } = require("mongodb");
-const { PNG } = require("pngjs");
-const crypto = require("crypto");
-const puppeteer = require("puppeteer");
-const pug = require("pug");
-const http = require("http");
-// const https = require("https");
+import express from "express";
+import bodyParser from "body-parser";
+import { createReadStream } from "fs";
+import crypto from "crypto";
+import http from "http";
 
-const app = express();
-const upload = multer();
+import multer from "multer";
+import fetch from "node-fetch";
+import { MongoClient } from "mongodb";
+import { PNG } from "pngjs";
+import puppeteer from "puppeteer";
+import pug from "pug";
+
+import appSrc from "./app.js";
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || "0.0.0.0";
 const LOGIN = "mypymypy";
 const uuid = "8155ee0b-ebea-4a53-93fe-a9ae47fb83ee";
+
+const app = appSrc(express, bodyParser, createReadStream, crypto, http);
+const upload = multer();
 
 const fetchPageHtml = `<!DOCTYPE html>
 <html lang="ru">
@@ -44,7 +46,6 @@ const fetchPageHtml = `<!DOCTYPE html>
             inp.value = text;
           })
           .catch(function (err) {
-            // на случай ошибки что-то пишем в поле
             inp.value = 'Error: ' + err;
           });
       });
@@ -52,78 +53,6 @@ const fetchPageHtml = `<!DOCTYPE html>
   </script>
 </body>
 </html>`;
-
-app.use((_req, res, next) => {
-  res.setHeader("Content-Type", "text/plain; charset=UTF-8");
-  res.setHeader("X-Author", uuid);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "*");
-  next();
-});
-
-app.get("/health", (_req, res) => {
-  res.status(200).send("OK");
-});
-
-app.get("/", (_req, res) => {
-  res.send(uuid);
-});
-
-app.get("/login/", (_req, res) => {
-  res.send(uuid);
-});
-
-app.get("/code/", (_req, res) => {
-  const stream = fs.createReadStream(__filename, { encoding: "utf8" });
-
-  res.setHeader("Content-Type", "text/plain; charset=UTF-8");
-
-  stream.on("error", () => {
-    res.status(500).send("read error");
-  });
-
-  stream.pipe(res);
-});
-
-app.get("/sha1/:input/", (req, res) => {
-  const { input } = req.params;
-  const hash = crypto.createHash("sha1").update(input).digest("hex");
-  res.type("text/plain").send(hash);
-});
-
-app.all("/req/", (req, res) => {
-  let addr = req.method === "GET" ? req.query.addr : req.body && req.body.addr;
-
-  if (!addr) {
-    return res.status(400).type("text/plain").send("no addr");
-  }
-
-  try {
-    http
-      .get(addr, (upstreamRes) => {
-        let data = "";
-
-        upstreamRes.on("data", (chunk) => {
-          data += chunk.toString();
-        });
-
-        upstreamRes.on("end", () => {
-          res.type("text/plain").send(data);
-        });
-
-        upstreamRes.on("error", () => {
-          res.status(502).type("text/plain").send("upstream error");
-        });
-      })
-      .on("error", () => {
-        res.status(500).type("text/plain").send("request error");
-      });
-  } catch (e) {
-    res.status(500).type("text/plain").send("internal error");
-  }
-});
-
 
 const sampleFnCode = `function task(x) {
   return x * this * this;
@@ -154,7 +83,6 @@ app.get("/fetch/", (_req, res) => {
 
 app.all("/result4/", express.text({ type: "*/*" }), (req, res) => {
   const xTest = req.get("x-test") || "";
-
   const bodyValue = typeof req.body === "string" ? req.body : "";
 
   const payload = {
@@ -237,32 +165,6 @@ app.get("/id/:n/", async (req, res) => {
   }
 });
 
-// app.get('/chunks/', (_req, res) => {
-//   try {
-//     const postData = `login=${encodeURIComponent(LOGIN)}`;
-//     const options = {
-//       hostname: 'kodaktor.ru',
-//       path: '/api/chunks',
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/x-www-form-urlencoded',
-//         'Content-Length': Buffer.byteLength(postData)
-//       }
-//     };
-//     const reqUp = https.request(options, upstreamRes => {
-//       let count = 0;
-//       upstreamRes.on('data', () => { count++; });
-//       upstreamRes.on('end', () => { res.type('text/plain').send(String(count)); });
-//       upstreamRes.on('error', () => { res.status(500).send('upstream error'); });
-//     });
-//     reqUp.on('error', () => { res.status(500).send('request error'); });
-//     reqUp.write(postData);
-//     reqUp.end();
-//   } catch (e) {
-//     res.status(500).send('internal error');
-//   }
-// });
-
 app.post("/size2json/", upload.single("image"), (req, res) => {
   try {
     const file = req.file;
@@ -302,8 +204,6 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
-app.use(express.urlencoded({ extended: true }));
-
 app.post("/insert/", async (req, res) => {
   let client;
 
@@ -340,7 +240,7 @@ app.post("/insert/", async (req, res) => {
   }
 });
 
-app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
+app.get("/wordpress/wp-json/wp/v2/posts/1", (_req, res) => {
   res.json({
     id: 1,
     slug: uuid,
@@ -353,8 +253,6 @@ app.get("/wordpress/wp-json/wp/v2/posts/1", (_, res) => {
     },
   });
 });
-
-app.use(express.json());
 
 app.post("/render/", async (req, res) => {
   const { random2, random3 } = req.body;
@@ -408,23 +306,3 @@ app.all("*", (_req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`HTTP server running at http://${HOST}:${PORT}`);
 });
-
-// const certDir = path.join(__dirname, 'certs');
-// if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
-// const keyPath = path.join(certDir, 'key.pem');
-// const certPath = path.join(certDir, 'cert.pem');
-//
-// let credentials;
-// if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-//   credentials = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
-// } else {
-//   const attrs = [{ name: 'commonName', value: 'localhost' }];
-//   const pems = selfsigned.generate(attrs, { days: 365 });
-//   fs.writeFileSync(keyPath, pems.private);
-//   fs.writeFileSync(certPath, pems.cert);
-//   credentials = { key: pems.private, cert: pems.cert };
-// }
-//
-// https.createServer(credentials, app).listen(PORT, HOST, () => {
-//   console.log(`HTTPS server running at https://localhost:${PORT}`);
-// });
