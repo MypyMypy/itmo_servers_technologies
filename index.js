@@ -205,8 +205,7 @@ app.get("/makeimage/", (req, res) => {
 });
 
 app.post("/insert/", async (req, res) => {
-  let client;
-
+  let client;  
   try {
     const { login, password, URL } = req.body;
 
@@ -239,6 +238,8 @@ app.post("/insert/", async (req, res) => {
     }
   }
 });
+
+app.use(bodyParser.json());
 
 app.get("/wordpress/wp-json/wp/v2/posts/1", (_req, res) => {
   res.json({

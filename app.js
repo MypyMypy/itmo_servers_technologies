@@ -11,7 +11,6 @@ export default function appSrc(
   const app = express();
 
   app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(bodyParser.json());
 
   app.use((_req, res, next) => {
     res.setHeader("Content-Type", "text/plain; charset=UTF-8");
