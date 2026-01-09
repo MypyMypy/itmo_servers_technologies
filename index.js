@@ -325,75 +325,37 @@ app.post("/render/", async (req, res) => {
   res.send(html);
 });
 
-app.get("/test/", async (req, res) => {
-  const targetURL = req.query.URL;
-  if (!targetURL) {
-    return res
-      .status(400)
-      .type("text/plain")
-      .send("URL query param is required");
+app.get("/test", async (req, res) => {
+  const target = req.query.URL;
+  if (!target) {
+    res.status(400).send("Need ?URL=");
+    return;
   }
 
-  let browser;
   try {
-    browser = await puppeteer.launch({
+    const browser = await puppeteer.launch({
       headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-      ],
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
+    await page.goto(target, { waitUntil: "networkidle0" });
 
-    await page.goto(targetURL, {
-      waitUntil: "domcontentloaded",
-      timeout: 20000,
-    });
+    await page.waitForSelector("#bt");
+    await page.click("#bt");
 
-    await page.waitForSelector("#vwr", { timeout: 10000 });
-    const frameHandle = await page.$("#vwr");
-    let frame = await frameHandle.contentFrame();
+    await page.waitForFunction(
+      () => document.querySelector("#inp")?.value.length > 0
+    );
 
-    let attempts = 0;
-    while (!frame && attempts < 20) {
-      await new Promise((r) => setTimeout(r, 500));
-      frame = await frameHandle.contentFrame();
-      attempts++;
-    }
+    const result = await page.$eval("#inp", (el) => el.value);
 
-    if (!frame) {
-      throw new Error("Inner frame not ready");
-    }
+    await browser.close();
 
-    await frame.waitForSelector("#bt", { timeout: 10000 });
-    await frame.waitForSelector("#inp", { timeout: 10000 });
-
-    await frame.click("#bt");
-
-    const value = await frame
-      .waitForFunction(
-        () => {
-          const input = document.querySelector("#inp");
-          return input && input.value && input.value.trim().length > 0
-            ? input.value
-            : false;
-        },
-        { timeout: 10000 }
-      )
-      .then((h) => h.jsonValue());
-
-    res.type("text/plain").send(String(value));
-  } catch (e) {
-    console.error("Puppeteer /test/ error:", e);
-    res.status(500).type("text/plain").send("puppeteer error");
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {}
-    }
+    res.setHeader("Content-Type", "text/plain");
+    res.send(result);
+  } catch (err) {
+    res.status(500).send("Error: " + err.toString());
   }
 });
 
