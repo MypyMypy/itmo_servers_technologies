@@ -325,38 +325,36 @@ app.post("/render/", async (req, res) => {
   res.send(html);
 });
 
+const CHROME_PATH =
+  "/home/runner/.cache/puppeteer/chrome/linux-143.0.7499.169/chrome-linux64/chrome";
+
 app.get("/test", async (req, res) => {
   const target = req.query.URL;
-  if (!target) {
-    res.status(400).send("Need ?URL=");
-    return;
-  }
 
-  try {
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+  const browser = await puppeteer.launch({
+    executablePath: CHROME_PATH,
+    headless: true, // можно и "new", но так надёжнее
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
-    const page = await browser.newPage();
-    await page.goto(target, { waitUntil: "networkidle0" });
+  const page = await browser.newPage();
 
-    await page.waitForSelector("#bt");
-    await page.click("#bt");
+  await page.goto(target, { waitUntil: "networkidle0" });
 
-    await page.waitForFunction(
-      () => document.querySelector("#inp")?.value.length > 0
-    );
+  // ждём кнопку и кликаем
+  await page.waitForSelector("#bt");
+  await page.click("#bt");
 
-    const result = await page.$eval("#inp", (el) => el.value);
+  await page.waitForFunction(() => {
+    const inp = document.querySelector("#inp");
+    return inp && typeof inp.value === "string" && inp.value.length > 0;
+  });
 
-    await browser.close();
+  const value = await page.$eval("#inp", (el) => el.value);
 
-    res.setHeader("Content-Type", "text/plain");
-    res.send(result);
-  } catch (err) {
-    res.status(500).send("Error: " + err.toString());
-  }
+  await browser.close();
+
+  res.type("text/plain").send(String(value));
 });
 
 app.listen(PORT, HOST, () => {
