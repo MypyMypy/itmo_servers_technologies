@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест /insert</title>
+</head>
+<body>
+  <h1>Тест запроса /insert</h1>
+
+  <form action="http://localhost:5001/insert/" method="post">
+    <div>
+      <label for="login">Логин:</label>
+      <input type="text" id="login" name="login" required>
+    </div>
+
+    <div>
+      <label for="password">Пароль:</label>
+      <input type="text" id="password" name="password" required>
+    </div>
+
+    <div>
+      <label for="url">Mongo URL:</label>
+      <input type="text" id="url" name="URL" required
+             placeholder="mongodb://localhost:27017/testdb">
+    </div>
+
+    <div>
+      <button type="submit">Отправить</button>
+    </div>
+  </form>
+</body>
+</html>

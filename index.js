@@ -13,7 +13,7 @@ import pug from "pug";
 
 import appSrc from "./app.js";
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const HOST = process.env.HOST || "0.0.0.0";
 const LOGIN = "mypymypy";
 const uuid = "8155ee0b-ebea-4a53-93fe-a9ae47fb83ee";
@@ -215,10 +215,7 @@ app.post("/insert/", urlencodedParser, async (req, res) => {
       return res.status(400).send("URL is required");
     }
 
-    client = new MongoClient(URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    client = new MongoClient(URL);
 
     await client.connect();
 
@@ -236,7 +233,10 @@ app.post("/insert/", urlencodedParser, async (req, res) => {
 
     res.sendStatus(200);
   } catch (err) {
-    res.sendStatus(500);
+    res
+      .status(500)
+      .type("text/plain")
+      .send(`Insert failed: ${err.name}: ${err.message}`);
   } finally {
     if (client) {
       await client.close();
