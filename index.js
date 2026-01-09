@@ -207,7 +207,9 @@ app.get("/makeimage/", (req, res) => {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.post("/insert/", async (req, res) => {
+const urlencodedParser = express.urlencoded({extended: false});
+
+app.post("/insert/", urlencodedParser, async (req, res) => {
   let client;  
   try {
     const { login, password, URL } = req.body;
