@@ -6,12 +6,14 @@ import http from "http";
 
 import multer from "multer";
 import fetch from "node-fetch";
-import { MongoClient } from "mongodb";
 import { PNG } from "pngjs";
 import puppeteer from "puppeteer";
 import pug from "pug";
 
 import appSrc from "./app.js";
+
+const require = createRequire(import.meta.url);
+const { MongoClient } = require("mongodb");
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -204,17 +206,15 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
-const urlencodedParser = bodyParser.urlencoded({
-  extended: false,
-  type: "*/*",
-});
-
-app.post("/insert/", urlencodedParser, async (req, res) => {
+app.post("/insert/", async (req, res) => {
   let client;
   try {
     const { login, password, URL } = req.body || {};
 
-    client = new MongoClient(URL);
+    client = new MongoClient(URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
     await client.connect();
 
