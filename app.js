@@ -11,6 +11,7 @@ export default function appSrc(
   const app = express();
 
   app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(bodyParser.json());
 
   app.use((_req, res, next) => {
     res.setHeader("Content-Type", "text/plain; charset=UTF-8");
@@ -37,7 +38,7 @@ export default function appSrc(
   });
 
   app.get("/code/", (_req, res) => {
-    const filePath = import.meta.url.substring(7); // file://...
+    const filePath = import.meta.url.substring(7);
     const stream = createReadStream(filePath, { encoding: "utf8" });
 
     res.setHeader("Content-Type", "text/plain; charset=UTF-8");
