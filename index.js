@@ -328,12 +328,12 @@ app.post("/render/", async (req, res) => {
 const CHROME_PATH =
   "/home/runner/.cache/puppeteer/chrome/linux-143.0.7499.169/chrome-linux64/chrome";
 
-app.get("/test", async (req, res) => {
+app.get("/test/", async (req, res) => {
   const target = req.query.URL;
 
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
-    headless: true, // можно и "new", но так надёжнее
+    headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
