@@ -109,7 +109,6 @@ app.all("/req/", (req, res) => {
         });
 
         upstreamRes.on("end", () => {
-          // просто отдаём как text/plain
           res.type("text/plain").send(data);
         });
 
@@ -410,8 +409,6 @@ app.listen(PORT, HOST, () => {
   console.log(`HTTP server running at http://${HOST}:${PORT}`);
 });
 
-// Ниже — вариант локального HTTPS, НЕ для Replit Deployments:
-//
 // const certDir = path.join(__dirname, 'certs');
 // if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
 // const keyPath = path.join(certDir, 'key.pem');
