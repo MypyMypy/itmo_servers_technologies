@@ -327,48 +327,76 @@ app.post("/render/", async (req, res) => {
 
 app.get("/test/", async (req, res) => {
   const targetURL = req.query.URL;
+  if (!targetURL) {
+    return res
+      .status(400)
+      .type("text/plain")
+      .send("URL query param is required");
+  }
 
   let browser;
-  browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-    ],
-  });
+  try {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+      ],
+    });
 
-  const page = await browser.newPage();
-  await page.goto(targetURL, {
-    waitUntil: "domcontentloaded",
-    timeout: 15000,
-  });
+    const page = await browser.newPage();
 
-  await page.waitForSelector("#bt", { timeout: 5000 });
-  await page.waitForSelector("#inp", { timeout: 5000 });
+    await page.goto(targetURL, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
 
-  await page.click("#bt");
+    await page.waitForSelector("#vwr", { timeout: 10000 });
+    const frameHandle = await page.$("#vwr");
+    let frame = await frameHandle.contentFrame();
 
-  const result = await page.waitForFunction(
-    () => {
-      const input = document.querySelector("#inp");
-      return input && input.value && input.value.trim().length > 0
-        ? input.value
-        : false;
-    },
-    { timeout: 5000 }
-  );
+    let attempts = 0;
+    while (!frame && attempts < 20) {
+      await new Promise((r) => setTimeout(r, 500));
+      frame = await frameHandle.contentFrame();
+      attempts++;
+    }
 
-  const value = await result.jsonValue();
+    if (!frame) {
+      throw new Error("Inner frame not ready");
+    }
 
-  res.type("text/plain").send(String(value));
-  res.status(500).type("text/plain").send("puppeteer error");
-  if (browser) {
-    await browser.close();
+    await frame.waitForSelector("#bt", { timeout: 10000 });
+    await frame.waitForSelector("#inp", { timeout: 10000 });
+
+    await frame.click("#bt");
+
+    const value = await frame
+      .waitForFunction(
+        () => {
+          const input = document.querySelector("#inp");
+          return input && input.value && input.value.trim().length > 0
+            ? input.value
+            : false;
+        },
+        { timeout: 10000 }
+      )
+      .then((h) => h.jsonValue());
+
+    res.type("text/plain").send(String(value));
+  } catch (e) {
+    console.error("Puppeteer /test/ error:", e);
+    res.status(500).type("text/plain").send("puppeteer error");
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch {}
+    }
   }
 });
 
-// В Replit оставляем HTTP — внешний HTTPS даёт сам Replit
 app.listen(PORT, HOST, () => {
   console.log(`HTTP server running at http://${HOST}:${PORT}`);
 });
