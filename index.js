@@ -6,7 +6,7 @@ import http from "http";
 
 import multer from "multer";
 import fetch from "node-fetch";
-const { MongoClient } = require('mongodb');
+import { MongoClient } from "mongodb";
 import { PNG } from "pngjs";
 import puppeteer from "puppeteer";
 import pug from "pug";
