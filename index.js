@@ -1,4 +1,4 @@
-// const fs = require('fs');
+const fs = require('fs');
 // const path = require('path');
 const express = require("express");
 const multer = require("multer");
@@ -8,7 +8,8 @@ const { PNG } = require("pngjs");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
 const pug = require("pug");
-const https = require("https");
+const http = require("http");
+// const https = require("https");
 
 const app = express();
 const upload = multer();
@@ -61,7 +62,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Доп. health-check на всякий
 app.get("/health", (_req, res) => {
   res.status(200).send("OK");
 });
@@ -73,6 +73,58 @@ app.get("/", (_req, res) => {
 app.get("/login/", (_req, res) => {
   res.send(uuid);
 });
+
+app.get("/code/", (_req, res) => {
+  const stream = fs.createReadStream(__filename, { encoding: "utf8" });
+
+  res.setHeader("Content-Type", "text/plain; charset=UTF-8");
+
+  stream.on("error", () => {
+    res.status(500).send("read error");
+  });
+
+  stream.pipe(res);
+});
+
+app.get("/sha1/:input/", (req, res) => {
+  const { input } = req.params;
+  const hash = crypto.createHash("sha1").update(input).digest("hex");
+  res.type("text/plain").send(hash);
+});
+
+app.all("/req/", (req, res) => {
+  let addr = req.method === "GET" ? req.query.addr : req.body && req.body.addr;
+
+  if (!addr) {
+    return res.status(400).type("text/plain").send("no addr");
+  }
+
+  try {
+    http
+      .get(addr, (upstreamRes) => {
+        let data = "";
+
+        upstreamRes.on("data", (chunk) => {
+          data += chunk.toString();
+        });
+
+        upstreamRes.on("end", () => {
+          // просто отдаём как text/plain
+          res.type("text/plain").send(data);
+        });
+
+        upstreamRes.on("error", () => {
+          res.status(502).type("text/plain").send("upstream error");
+        });
+      })
+      .on("error", () => {
+        res.status(500).type("text/plain").send("request error");
+      });
+  } catch (e) {
+    res.status(500).type("text/plain").send("internal error");
+  }
+});
+
 
 const sampleFnCode = `function task(x) {
   return x * this * this;
@@ -93,7 +145,6 @@ const promiseFnCode = `function task(x){
 }`;
 
 app.get("/promise/", (_req, res) => {
-  // на всякий случай явно укажем text/plain
   res.type("text/plain; charset=UTF-8").send(promiseFnCode);
 });
 
@@ -105,8 +156,6 @@ app.get("/fetch/", (_req, res) => {
 app.all("/result4/", express.text({ type: "*/*" }), (req, res) => {
   const xTest = req.get("x-test") || "";
 
-  // Здесь req.body ГАРАНТИРОВАННО строка,
-  // даже если тестер шлёт form-data, urlencoded или чистый текст
   const bodyValue = typeof req.body === "string" ? req.body : "";
 
   const payload = {
@@ -119,7 +168,6 @@ app.all("/result4/", express.text({ type: "*/*" }), (req, res) => {
   res.end(JSON.stringify(payload));
 });
 
-// Час по Москве
 app.get("/hour/", (_req, res) => {
   try {
     const dtf = new Intl.DateTimeFormat("ru-RU", {
@@ -145,7 +193,6 @@ app.get("/hour/", (_req, res) => {
   }
 });
 
-// RSA-decrypt
 app.post(
   "/decypher/",
   upload.fields([{ name: "key" }, { name: "secret" }]),
@@ -176,7 +223,6 @@ app.post(
   }
 );
 
-// proxy к nd.kodaktor.ru
 app.get("/id/:n/", async (req, res) => {
   const n = req.params.n;
   const url = `https://nd.kodaktor.ru/users/${encodeURIComponent(n)}`;
@@ -341,7 +387,6 @@ app.get("/test/", async (req, res) => {
 
   await page.goto(target, { waitUntil: "networkidle0" });
 
-  // ждём кнопку и кликаем
   await page.waitForSelector("#bt");
   await page.click("#bt");
 
@@ -355,6 +400,10 @@ app.get("/test/", async (req, res) => {
   await browser.close();
 
   res.type("text/plain").send(String(value));
+});
+
+app.all("*", (_req, res) => {
+  res.type("text/plain").send(uuid);
 });
 
 app.listen(PORT, HOST, () => {
