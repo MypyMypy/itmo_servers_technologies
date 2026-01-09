@@ -6,7 +6,7 @@ import http from "http";
 
 import multer from "multer";
 import fetch from "node-fetch";
-import { MongoClient } from "mongodb";
+const { MongoClient } = require("mongodb");
 import { PNG } from "pngjs";
 import puppeteer from "puppeteer";
 import pug from "pug";
@@ -204,11 +204,17 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 app.post("/insert/", async (req, res) => {
   let client;  
   try {
-    console.log('req', req)
     const { login, password, URL } = req.body;
+
+    if (!URL) {
+      return res.status(400).send("URL is required");
+    }
 
     client = new MongoClient(URL, {
       useNewUrlParser: true,
@@ -225,7 +231,6 @@ app.post("/insert/", async (req, res) => {
     const userDocument = {
       login: login,
       password: password,
-      createdAt: new Date(),
     };
 
     await usersCollection.insertOne(userDocument);
