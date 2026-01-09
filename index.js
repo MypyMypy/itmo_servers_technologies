@@ -204,13 +204,10 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-const urlencodedParser = express.urlencoded({extended: false});
+const urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 app.post("/insert/", urlencodedParser, async (req, res) => {
-  let client;  
+  let client;
   try {
     const { login, password, URL } = req.body;
 
