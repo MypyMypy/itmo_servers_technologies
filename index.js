@@ -204,16 +204,15 @@ app.get("/makeimage/", (req, res) => {
   png.pack().pipe(res);
 });
 
-const urlencodedParser = bodyParser.urlencoded({ extended: false });
+const urlencodedParser = bodyParser.urlencoded({
+  extended: false,
+  type: "*/*",
+});
 
 app.post("/insert/", urlencodedParser, async (req, res) => {
   let client;
   try {
-    const { login, password, URL } = req.body;
-
-    if (!URL) {
-      return res.status(400).send("URL is required");
-    }
+    const { login, password, URL } = req.body || {};
 
     client = new MongoClient(URL);
 
