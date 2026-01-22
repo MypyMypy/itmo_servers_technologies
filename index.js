@@ -303,69 +303,71 @@ app.get("/test/", async (req, res) => {
   res.type("text/plain").send(String(value));
 });
 
-app.get("/zombie", async (req, res) => {
-  // res.type("text/plain");
+const zombie = async (req, res) => {
+  const n =
+    req.params.num ||
+    (req.query &&
+      (req.query.n ||
+        req.query.num ||
+        req.query.number ||
+        Object.keys(req.query)[0]));
 
-  // const n =
-  //   req.query &&
-  //   (req.query.n ||
-  //     req.query.num ||
-  //     req.query.number ||
-  //     Object.keys(req.query)[0]);
-
-  // if (!n) {
-  //   return res.status(400).send("Error: No number provided");
-  // }
-
-  // const targetUrl = `https://kodaktor.ru/g/d7290da?${n}`;
-
-  // const browser = await puppeteer.launch({
-  //   executablePath: CHROME_PATH,
-  //   headless: true,
-  //   args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  // });
-
-  // const page = await browser.newPage();
-  // page.setDefaultTimeout(15000);
-
-  // await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
-
-  // await page.waitForSelector("button");
-  // await page.click("button");
-
-  // await page.waitForFunction(() => {
-  //   return document.title && document.title.trim().length > 0;
-  // });
-
-  // const result = await page.title();
-
-  // return res.send(String(result));
-
-  try {
-    let num = req.params.num;
-
-    if (!num) {
-      num = Object.keys(req.query)[0];
-    }
-
-    if (!num) {
-      return res.status(400).send("Error: No number provided");
-    }
-
-    const response = await fetch(SECRET_SCRIPT_URL);
-    if (!response.ok) throw new Error("Script not found");
-    const scriptCode = await response.text();
-
-    const calculate = new Function(scriptCode + `; return f(${num});`);
-
-    const result = calculate();
-
-    res.send(String(result));
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error: " + error.message);
+  if (!n) {
+    return res.status(400).send("Error: No number provided");
   }
-});
+
+  const targetUrl = `https://kodaktor.ru/g/d7290da?${n}`;
+
+  const browser = await puppeteer.launch({
+    executablePath: CHROME_PATH,
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
+  const page = await browser.newPage();
+  page.setDefaultTimeout(15000);
+
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+
+  await page.waitForSelector("button");
+  await page.click("button");
+
+  await page.waitForFunction(() => {
+    return document.title && document.title.trim().length > 0;
+  });
+
+  const result = await page.title();
+
+  return res.send(String(result));
+
+  // try {
+  //   let num = req.params.num;
+
+  //   if (!num) {
+  //     num = Object.keys(req.query)[0];
+  //   }
+
+  //   if (!num) {
+  //     return res.status(400).send("Error: No number provided");
+  //   }
+
+  //   const response = await fetch(SECRET_SCRIPT_URL);
+  //   if (!response.ok) throw new Error("Script not found");
+  //   const scriptCode = await response.text();
+
+  //   const calculate = new Function(scriptCode + `; return f(${num});`);
+
+  //   const result = calculate();
+
+  //   res.send(String(result));
+  // } catch (error) {
+  //   console.error(error);
+  //   res.status(500).send("Error: " + error.message);
+  // }
+};
+
+app.get("/zombie", zombie);
+app.get("/zombie/:num", zombie);
 
 app.all("*", (_req, res) => {
   res.type("text/plain").send(uuid);
