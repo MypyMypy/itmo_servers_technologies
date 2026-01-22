@@ -306,45 +306,36 @@ app.get("/test/", async (req, res) => {
 app.get("/zombie", async (req, res) => {
   res.type("text/plain");
 
-  const nakedNumberKey = Object.keys(req.query || {})[0];
   const n =
-    (req.query && (req.query.n || req.query.num || req.query.number)) ||
-    (nakedNumberKey && /^\d+$/.test(nakedNumberKey) ? nakedNumberKey : null);
+    req.query &&
+    (req.query.n ||
+      req.query.num ||
+      req.query.number ||
+      Object.keys(req.query)[0]);
 
   const targetUrl = `https://kodaktor.ru/g/d7290da?${encodeURIComponent(n)}`;
 
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
+  const browser = await puppeteer.launch({
+    executablePath: CHROME_PATH,
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
-    const page = await browser.newPage();
-    page.setDefaultTimeout(15000);
+  const page = await browser.newPage();
+  page.setDefaultTimeout(15000);
 
-    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
 
-    await page.waitForSelector("button");
-    await page.click("button");
+  await page.waitForSelector("button");
+  await page.click("button");
 
-    await page.waitForFunction(() => {
-      return document.title && document.title.trim().length > 0;
-    });
+  await page.waitForFunction(() => {
+    return document.title && document.title.trim().length > 0;
+  });
 
-     const result = await page.title();
+  const result = await page.title();
 
-    return res.send(result);
-  } catch (e) {
-    return res.status(500).send(`Error: ${e.message}`);
-  } finally {
-    if (browser) await browser.close();
-  }
+  return res.send(result);
 });
 
 app.all("*", (_req, res) => {
