@@ -313,7 +313,11 @@ app.get("/zombie", async (req, res) => {
       req.query.number ||
       Object.keys(req.query)[0]);
 
-  const targetUrl = `https://kodaktor.ru/g/d7290da?${encodeURIComponent(n)}`;
+  if (!n) {
+    return res.status(400).send("Error: No number provided");
+  }
+
+  const targetUrl = `https://kodaktor.ru/g/d7290da?${n}`;
 
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -335,7 +339,7 @@ app.get("/zombie", async (req, res) => {
 
   const result = await page.title();
 
-  return res.send(result);
+  return res.send(String(result));
 });
 
 app.all("*", (_req, res) => {
