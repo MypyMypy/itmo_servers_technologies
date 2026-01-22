@@ -34,7 +34,7 @@ export default function appSrc(
   });
 
   app.get("/login/", (_req, res) => {
-    res.send(uuid);
+    res.send(LOGIN);
   });
 
   app.get("/code/", (_req, res) => {

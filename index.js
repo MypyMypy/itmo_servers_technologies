@@ -138,19 +138,19 @@ app.post(
       try {
         decrypted = crypto.privateDecrypt(
           { key: keyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING },
-          secretBuf
+          secretBuf,
         );
       } catch (e) {
         decrypted = crypto.privateDecrypt(
           { key: keyPem, padding: crypto.constants.RSA_PKCS1_PADDING },
-          secretBuf
+          secretBuf,
         );
       }
       res.type("text/plain").send(decrypted.toString("utf8"));
     } catch (err) {
       res.status(500).send("decryption failed");
     }
-  }
+  },
 );
 
 app.get("/id/:n/", async (req, res) => {
@@ -187,11 +187,11 @@ app.post("/size2json/", upload.single("image"), (req, res) => {
 app.get("/makeimage/", (req, res) => {
   const w = Math.max(
     1,
-    Math.min(2000, parseInt(req.query.width || "1", 10) || 1)
+    Math.min(2000, parseInt(req.query.width || "1", 10) || 1),
   );
   const h = Math.max(
     1,
-    Math.min(2000, parseInt(req.query.height || "1", 10) || 1)
+    Math.min(2000, parseInt(req.query.height || "1", 10) || 1),
   );
   const png = new PNG({ width: w, height: h });
   for (let y = 0; y < h; y++) {
@@ -301,6 +301,50 @@ app.get("/test/", async (req, res) => {
   await browser.close();
 
   res.type("text/plain").send(String(value));
+});
+
+app.get("/zombie", async (req, res) => {
+  res.type("text/plain");
+
+  const nakedNumberKey = Object.keys(req.query || {})[0];
+  const n =
+    (req.query && (req.query.n || req.query.num || req.query.number)) ||
+    (nakedNumberKey && /^\d+$/.test(nakedNumberKey) ? nakedNumberKey : null);
+
+  const targetUrl = `https://kodaktor.ru/g/d7290da?${encodeURIComponent(n)}`;
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
+
+    const page = await browser.newPage();
+    page.setDefaultTimeout(15000);
+
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+
+    await page.waitForSelector("button");
+    await page.click("button");
+
+    await page.waitForFunction(() => {
+      return document.title && document.title.trim().length > 0;
+    });
+
+     const result = await page.title();
+
+    return res.send(result);
+  } catch (e) {
+    return res.status(500).send(`Error: ${e.message}`);
+  } finally {
+    if (browser) await browser.close();
+  }
 });
 
 app.all("*", (_req, res) => {
